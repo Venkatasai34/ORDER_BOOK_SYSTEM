@@ -1,25 +1,26 @@
-const mongoose = require("mongoose");
-const { ObjectId } = mongoose.Schema;
+const express = require("express");
+const router = express.Router();
+const { isSignedIn, isAuthenticated, isAdmin } = require("../controllers/auth");
+const { getUserById } = require("../controllers/user");
 
-const OrderSchema = new mongoose.Schema(
-  {
-    amount: { type: Number },
-    qty:{type: Number},
-    status: {
-      type: String,
-      default: "Recieved",
-      enum: ["Accepted", "Rejected", "Placed"],
-    },
-    updated: Date,
-    // stockId: { type:  ObjectId,ref:"stock"},
-    user: {
-      type: ObjectId,
-      ref: "User"
-    }
-  },
-  { timestamps: true }
+const {
+  getOrderById,
+  createOrder,
+  getAllOrders,
+  updateStatus,
+} = require("../controllers/order");
+
+//params
+router.param("userId", getUserById);
+router.param("orderId", getOrderById);
+
+//Actual routes
+//create
+router.post(
+  "/order/create/:userId",
+  isSignedIn,
+  isAuthenticated,
+  createOrder
 );
 
-const Order = mongoose.model("Order", OrderSchema);
-
-module.exports = { Order };
+module.exports = router;
