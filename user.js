@@ -1,68 +1,76 @@
-const User = require("../models/user");
+const mongoose = require('mongoose');
+const crypto = require('crypto');
+const uuidv1 = require('uuid/v1');
 
-exports.getUserById = (req, res, next, id) => {
-  User.findById(id).exec((err, user) => {
-    if (err || !user) {
-      return res.status(400).json({
-        error: "No user was found in DB"
-      });
-    }
-    req.profile = user;
-    next();
-  });
-};
+const userSchema = new mongoose.Schema({
+    name:{
+        type: String,
+        reqired: true,
+        maxLength:32,
+        trim: true,
+    },
+    lastname:{
+        type: String,
+        required:false,
+        trim: true,
+        maxLength:32,
+    },
+    email:{
+        type: String,
+        trim:true,
+        requried:true,
+        unique:true,
+    },
+    userinfo:{
+        type: String,
+        trim:true,
+    },
+    encry_password:{
+        type: String,
+        requried:true,
 
-exports.getUser = (req, res) => {
-    
-    req.profile.encry_password = undefined;
-    req.salt = undefined;
-    req.createdAt = undefined;
-    req.updatedAt = undefined;
-    return res.json(req.profile);
-};
+    },
+    salt:String,
+    role:{
+        type:Number,
+        default:0,
 
-exports.getAllUsers = (req, res) => {
-    User.find().exec((err,users) => {
-        if(err || !users)
-        { 
-            return res.status(400).json({
-                error:"No users in DB"
-            });
+    },
+    purchases:{
+        type: Array,
+        default:[]
+    },
+},
+{
+    timestamps:true,
+});
+
+userSchema.virtual("password")
+.set(function(password){
+    this._password = password;
+    this.salt = uuidv1();
+    this.encry_password = this.getSecuredPassword(password);
+})
+.get(function(){
+    return this._password;
+
+})
+
+userSchema.methods = {
+    authenticate: function(plain_password){
+        return this.getSecuredPassword(plain_password) === this.encry_password;
+    },
+    getSecuredPassword: function(plainpassword) {
+        if (!plainpassword) return "";
+        try {
+          return crypto
+            .createHmac("sha256", this.salt)
+            .update(plainpassword)
+            .digest("hex");
+        } catch (err) {
+          return "";
         }
-        res.json(users);
-    })
-}
-
-exports.updateUser = (req, res) => {
-    User.findByIdAndUpdate(
-      { _id: req.profile._id },
-      { $set: req.body },
-      { new: true, useFindAndModify: false },
-      (err, user) => {
-        if (err) {
-          return res.status(400).json({
-            error: "You are not authorized to update this user"
-          });
-        }
-        user.salt = undefined;
-        user.encry_password = undefined;
-        res.json(user);
       }
-    );
-  };
+};
 
-  exports.userPurchaseList = (req,res) => {
-      order.find({user:req.profile._id})
-      .populate("user" ,"_id emial")
-      .exec((err, user) => {
-        if (err || !user) {
-          return res.status(400).json({
-            error: "No orders as far now"
-          });
-        }
-        res.json(order);
-      });
-
-  }
-  
-
+module.exports = mongoose.model("User",userSchema);

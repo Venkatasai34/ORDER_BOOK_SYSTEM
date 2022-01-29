@@ -1,63 +1,25 @@
-const { Order } = require("../models/order");
-const uuidv1 = require('uuid/v1');
+const mongoose = require("mongoose");
+const { ObjectId } = mongoose.Schema;
 
-
-exports.getOrderById = (req, res, next, id) => {
-  Order.findById(id)
-    .populate("products.product", "name price")
-    .exec((err, order) => {
-      if (err) {
-        return res.status(400).json({
-          error: "NO order found in DB"
-        });
-      }
-      req.order = order;
-      next();
-    });
-};
-
-exports.createOrder = (req, res) => {
-  req.body.order.user = req.profile;
-  req.body.OrderId = uuidv1();
-  const order = new Order(req.body.order);
-  order.save((err, order) => {
-    if (err) {
-      return res.status(400).json({
-        error: "Failed to save your order in DB"
-      });
+const OrderSchema = new mongoose.Schema(
+  {
+    amount: { type: Number },
+    qty:{type: Number},
+    status: {
+      type: String,
+      default: "Recieved",
+      enum: ["Accepted", "Rejected", "Placed"],
+    },
+    updated: Date,
+    // stockId: { type:  ObjectId,ref:"stock"},
+    user: {
+      type: ObjectId,
+      ref: "User"
     }
-    res.json(order);
-  });
-};
+  },
+  { timestamps: true }
+);
 
-// exports.getAllOrders = (req, res) => {
-//   Order.find()
-//     .populate("user", "_id name")
-//     .exec((err, order) => {
-//       if (err) {
-//         return res.status(400).json({
-//           error: "No orders found in DB"
-//         });
-//       }
-//       res.json(order);
-//     });
-// };
+const Order = mongoose.model("Order", OrderSchema);
 
-exports.getOrderStatus = (req, res) => {
-  res.json(Order.schema.path("status").enumValues);
-};
-
-exports.updateStatus = (req, res) => {
-  Order.update(
-    { _id: req.body.orderId },
-    { $set: { status: req.body.status } },
-    (err, order) => {
-      if (err) {
-        return res.status(400).json({
-          error: "Cannot update order status"
-        });
-      }
-      res.json(order);
-    }
-  );
-};
+module.exports = { Order };
